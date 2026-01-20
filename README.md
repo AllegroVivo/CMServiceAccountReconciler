@@ -14,7 +14,7 @@ The latest release of the CM Heating Service Account Reconciler can be downloade
 
 ## Usage & Operation
 
-Detailed usage instructions and operational guidelines for the CM Heating Service Account Reconciler can be found in this repository's wiki [located here](https://github.com/AllegroVivo/CMServiceAccountReconciler/wiki). Please refer to this document for step-by-step instructions on how to set up and use the application.
+Detailed usage instructions and operational guidelines for the CM Heating Service Account Reconciler can be found in this repository's documentation [located here](https://github.com/AllegroVivo/CMServiceAccountReconciler/wiki). Please refer to this page for step-by-step instructions on how to set up and use the application.
 
 ## Archive Contents
 
