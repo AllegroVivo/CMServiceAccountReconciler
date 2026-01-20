@@ -70,7 +70,6 @@ class ReconciliationWorker(QObject):
             reconciler.load_data(self._spreadsheet_id, self._last_run_date)
             if self._check_cancel():
                 return
-
             # Phase 2: Load QB CSV
             self.progress_busy.emit(False)
             self.phase_changed.emit("Parsing QuickBooks CSV...", 15)

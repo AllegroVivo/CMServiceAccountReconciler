@@ -36,8 +36,8 @@ class AppStateManager:
         assert self._state is not None
 
         # TEMPORARY
-        if self._state.last_run_date is None:
-            self.update_last_run_date(date(2025, 8, 2))
+        # if self._state.last_run_date is None:
+        #     self.update_last_run_date(date(2025, 8, 2))
 
 ################################################################################
     @property

@@ -1,5 +1,7 @@
 site_name: CM Heating Service Account Reconciler Documentation
-site_url: https://github.com/AllegroVivo/CMServiceAccountReconciler
+site_url: https://allegrovivo.github.io/CMServiceAccountReconciler/
+repo_url: https://github.com/AllegroVivo/CMServiceAccountReconciler
+site_author: Stephanie Phillips
 theme:
   name: material
   font:
@@ -26,7 +28,9 @@ theme:
       accent: deep orange
 
 markdown_extensions:
+  - admonition
   - attr_list
+  - pymdownx.details
   - pymdownx.emoji:
       emoji_index: !!python/name:material.extensions.emoji.twemoji
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
@@ -39,12 +43,14 @@ markdown_extensions:
   - pymdownx.superfences
   - pymdownx.tabbed:
         alternate_style: true
-  - admonition
-  - pymdownx.details
 
 extra:
     social:
-        - icon: fontawesome/brands/github
+        - icon: simple/github
           link: https://github.com/AllegroVivo/CMServiceAccountReconciler
 
 copyright: Copyright © 2026 Frogge Tech Solutions
+
+nav:
+  - Home: index.md
+  - Setup & Configuration: setup.md

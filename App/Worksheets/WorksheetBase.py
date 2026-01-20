@@ -8,6 +8,7 @@ from typing import Optional, Mapping, Tuple
 from Utilities import Utilities as U
 from ..Exceptions import *
 from ..SheetRecord import SheetRecord
+from App.Classes import MemberName
 
 if TYPE_CHECKING:
     from GClient.Client import GSheetsClient
@@ -524,7 +525,7 @@ class _WorksheetBase(ABC):
     def _pad_row(row: List[Mapping[str, Any]], pad_to: int) -> List[Mapping[str, Any]]:
 
         if len(row) < pad_to:
-            num_addl = 10 - len(row)
+            num_addl = pad_to - len(row)
             row.extend([{
                 "horizontalAlignment": "LEFT",
                 "wrapStrategy": "WRAP",

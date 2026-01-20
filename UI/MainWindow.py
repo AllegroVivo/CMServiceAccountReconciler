@@ -169,7 +169,6 @@ class MainWindow(QMainWindow):
             QMessageBox.StandardButton.No
         )
         if resp != QMessageBox.StandardButton.Yes:
-            self.append_log("[UI] Routing Rules access cancelled by user.")
             return
 
         self.rules_requested.emit()
