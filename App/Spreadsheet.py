@@ -169,22 +169,24 @@ class Spreadsheet:
             )
 
         # Write final errors list to error sheet.
-        error_payload = reconciler.format_all_errors(date_str)
+        # Call this outside the loop to ensure we've collected all errors from all sheets first.
+        reconciler.format_all_errors(None)
         if len(reconciler._errors) > 0:
             error_sheet_payload = {
                 "requests": [self.create_error_sheet_request(date_str)]
             }
             print(f"Creating sheet 'Parsing Errors'...")
-            self._client.batch_update_spreadsheet(
+            resp = self._client.batch_update_spreadsheet(
                 self.id,
                 error_sheet_payload
             )
             print(f"Appending data to sheet 'Parsing Errors'...")
-            self._client.values_append(
+            self._client.batch_update_spreadsheet(
                 self.id,
-                cell_range=U.absolute_range(f"Parsing Errors - {date_str}", f"A1:D{len(reconciler._errors)}"),
-                body=error_payload,
-                params={"valueInputOption": "USER_ENTERED"}
+                body={
+                    "requests": reconciler.format_all_errors(resp["replies"][0]["addSheet"]["properties"]["sheetId"]),
+                    "includeSpreadsheetInResponse": False
+                },
             )
 
         # Add data to the summary sheet for totals
@@ -240,11 +242,11 @@ class Spreadsheet:
             return f"=SUM({U.absolute_range(sheet, a1_range)})"
 
         rows_spec: List[Tuple[Optional[str], Optional[str]]] = [
-            (f"Annual - {date_str}", _sum(f"Annual - {date_str}", "C:C")),
-            (f"Monthly - {date_str}", _sum(f"Monthly - {date_str}", "C:C")),
-            (f"Plumbing - Annual - {date_str}", _sum(f"Plumbing - Annual - {date_str}", "C:C")),
-            (f"Generator - {date_str}", _sum(f"Generator - {date_str}", "C:C")),
-            (f"Duct Cleaning - {date_str}", _sum(f"Duct Cleaning - {date_str}", "C:C")),
+            (f"Annual", _sum(f"Annual - {date_str}", "C:C")),
+            (f"Monthly", _sum(f"Monthly - {date_str}", "C:C")),
+            (f"Plumbing - Annual", _sum(f"Plumbing - Annual - {date_str}", "C:C")),
+            (f"Generator", _sum(f"Generator - {date_str}", "C:C")),
+            (f"Duct Cleaning", _sum(f"Duct Cleaning - {date_str}", "C:C")),
             ("Opening Balances", _sum("Opening Balances", "B:B")),
             ("Total", _sum(f"Summary - {date_str}", "B1:B6")),
             ("", None),
@@ -267,12 +269,12 @@ class Spreadsheet:
                     "startRowIndex": 0,
                     "endRowIndex": len(rows_spec) - 4,
                     "startColumnIndex": 1,
-                    "endColumnIndex": 1,
+                    "endColumnIndex": 2,
                 },
                 "cell": {
                     "userEnteredFormat": {
                         "numberFormat": {
-                            "type": "NUMBER",
+                            "type": "CURRENCY",
                             "pattern": "$#,##0.00",
                         }
                     }
@@ -288,7 +290,7 @@ class Spreadsheet:
                     "startRowIndex": len(rows_spec) - 2,
                     "endRowIndex": len(rows_spec) - 2,
                     "startColumnIndex": 1,
-                    "endColumnIndex": 1,
+                    "endColumnIndex": 2,
                 },
                 "cell": {
                     "userEnteredFormat": {

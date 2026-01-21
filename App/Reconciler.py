@@ -245,18 +245,23 @@ class ServiceReconciler:
         self._spreadsheet.final_batch_update(self, date_str)
 
 ################################################################################
-    def format_all_errors(self, date_str: str) -> Dict[str, Any]:
+    def format_all_errors(self, sheet_id: Optional[int]) -> Dict[str, Any]:
 
         for sheet in self._spreadsheet._sheets:
             self._errors.extend(sheet._errors)
+            sheet._errors.clear()
 
         print(len(self._errors), "errors found during reconciliation. Writing...")
 
-        return {
-            "range": U.absolute_range(f"Parsing Errors - {date_str}", f"A1:D{len(self._errors)}"),
-            "majorDimension": "ROWS",
-            "values": [self.format_error_for_export(error) for error in self._errors]
-        }
+        if sheet_id:
+            return {
+                "appendCells": {
+                    "sheetId": sheet_id,
+                    "fields": "*",
+                    "rows": [e.to_row_data() for e in self._errors]
+                }
+            }
+        return {}
 
 ################################################################################
     def format_error_for_export(self, error: ReconcilerException) -> List[str]:
