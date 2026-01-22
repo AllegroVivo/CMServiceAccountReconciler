@@ -215,7 +215,7 @@ class ServiceReconciler:
             qb_records = sorted(self._qb[invoice_date], key=lambda r: r.amount)
 
             for qb in qb_records:
-                if qb.account_id == 23976747:
+                if qb.account_id == 177860658:
                     # Debug breakpoint
                     pass
 
@@ -258,7 +258,7 @@ class ServiceReconciler:
                 "appendCells": {
                     "sheetId": sheet_id,
                     "fields": "*",
-                    "rows": [e.to_row_data() for e in self._errors]
+                    "rows": [e.to_row_data() for e in sorted(self._errors, key=lambda e: e.sort_key())]
                 }
             }
         return {}

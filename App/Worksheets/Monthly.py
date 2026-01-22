@@ -88,7 +88,7 @@ class MonthlyWorksheet(_WorksheetBase):
 ################################################################################
     def reconcile_record(self, qb: QBServiceRecord, error: bool = True) -> bool:
 
-        if qb.account_id == 23976747:
+        if qb.account_id == 177860658:
             # Debug breakpoint
             pass
 
@@ -105,9 +105,20 @@ class MonthlyWorksheet(_WorksheetBase):
         # If there are no records for this account, log an error.
         if not acct_records:
             print(f"    No records found for account ID {qb.account_id} in sheet '{self.title}'")
-            print(f"    Adding new record for positive amount ${qb.amount} from QB.")
-            self.add_row(qb)
-            return True
+            if qb.amount > 0:
+                print(f"    Adding new record for positive amount ${qb.amount} from QB.")
+                self.add_row(qb)
+                return True
+            else:
+                print(f"    Error: No records to reconcile against for negative amount ${qb.amount} from QB.")
+                self._errors.append(
+                    NoRecordsToReconcileException(
+                        sheet_name=self.title,
+                        account_id=qb.account_id,
+                        qb_record=qb
+                    )
+                )
+                return False
 
         # If more than one account record exists, we need to combine into a single item.
         if len(acct_records) > 1:

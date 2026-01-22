@@ -180,13 +180,37 @@ class Spreadsheet:
                 self.id,
                 error_sheet_payload
             )
+            error_sheet_id = resp["replies"][0]["addSheet"]["properties"]["sheetId"]
             print(f"Appending data to sheet 'Parsing Errors'...")
             self._client.batch_update_spreadsheet(
                 self.id,
                 body={
-                    "requests": reconciler.format_all_errors(resp["replies"][0]["addSheet"]["properties"]["sheetId"]),
+                    "requests": reconciler.format_all_errors(error_sheet_id),
                     "includeSpreadsheetInResponse": False
                 },
+            )
+            # Delete duplicates in the error sheet based on first column (QB Row)
+            self._client.batch_update_spreadsheet(
+                self.id,
+                body={
+                    "requests": [{
+                        "deleteDuplicates": {
+                            "range": {
+                                "sheetId": error_sheet_id,
+                                "startRowIndex": 0,
+                                "endRowIndex": len(reconciler._errors),
+                                "startColumnIndex": 0,
+                                "endColumnIndex": 10,
+                            },
+                            "comparisonColumns": [{
+                                "sheetId": error_sheet_id,
+                                "dimension": "COLUMNS",
+                                "startIndex": 0,
+                                "endIndex": 1,
+                            }]
+                        }
+                    }]
+                }
             )
 
         # Add data to the summary sheet for totals

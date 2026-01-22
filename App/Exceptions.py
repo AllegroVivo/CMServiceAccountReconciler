@@ -14,6 +14,9 @@ class ReconcilerException(Exception):
     def to_row_data(self) -> Dict[str, List[Dict[str, Any]]]:
         raise NotImplementedError("Subclasses must implement to_row_data method.")
 
+    def sort_key(self) -> Any:
+        raise NotImplementedError("Subclasses must implement sort_key method.")
+
 ################################################################################
 class NameMissingError(ReconcilerException):
 
@@ -27,13 +30,17 @@ class NameMissingError(ReconcilerException):
         return {
             "values": [
                 fmt_value(
-                    value="Name Missing",
-                ),
-                fmt_value(
                     value=f"Row {self.row} in {self.source}",
-                )
+                ),
+                blank_cell(),
+                fmt_value(
+                    value="Name Missing - There was no name in the 'Name' column for this row. Unable to identify.",
+                ),
             ]
         }
+
+    def sort_key(self) -> Any:
+        return 0, self.source, self.row
 
 ################################################################################
 class NameParseError(ReconcilerException):
@@ -50,14 +57,22 @@ class NameParseError(ReconcilerException):
         return {
             "values": [
                 fmt_value(
-                    value="Name Parse Error",
+                    value=f"Row {self.row} in {self.source}: '{self.raw_name}'",
+                ),
+                blank_cell(),
+                fmt_value(
+                    value=(
+                        "Name Parse Error - Unable to parse a valid <name> "
+                        "<account number> combination from the 'Name' column. "
+                        "Unable to identify."
+                    ),
                     align="LEFT"
                 ),
-                fmt_value(
-                    value=f"Row {self.row} in {self.source}: '{self.raw_name}'",
-                )
             ]
         }
+
+    def sort_key(self) -> Any:
+        return 1, self.source, self.row
 
 ################################################################################
 class QBParsingError(ReconcilerException):
@@ -66,15 +81,12 @@ class QBParsingError(ReconcilerException):
 
         self.value: Dict[str, str] = value
         self.index: int = index
+        self.date: str = value["Date"]
         super().__init__(f"QBParsingError -- invalid record '{value}'. {msg}")
 
     def to_row_data(self) -> Dict[str, List[Dict[str, Any]]]:
         return {
             "values": [
-                fmt_value(
-                    value="QB Parse Error",
-                    align="LEFT"
-                ),
                 fmt_value(
                     value=f"QB Row {self.index}",
                 ),
@@ -83,12 +95,27 @@ class QBParsingError(ReconcilerException):
                     align="LEFT"
                 ),
                 fmt_value(
+                    value=(
+                        "QB Name Parse Error - Unable to parse a valid <name> "
+                        "<account number> combination from the QuickBooks record "
+                        "'Name' field. Unable to identify."
+                    ),
+                    align="LEFT"
+                ),
+                fmt_value(
                     value=f"{self.value.get('Amount', '???')}",
                     number_fmt=True,
                     align="RIGHT"
+                ),
+                fmt_value(
+                    value=f"{self.date}",
+                    align="LEFT"
                 )
             ]
         }
+
+    def sort_key(self) -> Any:
+        return 2, self.index
 
 ################################################################################
 class UnableToRouteException(ReconcilerException):
@@ -96,6 +123,7 @@ class UnableToRouteException(ReconcilerException):
     def __init__(self, qb: QBServiceRecord) -> None:
 
         self.qb: QBServiceRecord = qb
+        self.date: str = qb.date.strftime("%m-%d-%Y")
 
         super().__init__(
             f"UnableToRouteException: Unable to route QB Record '{qb.raw['Name']}' "
@@ -107,10 +135,6 @@ class UnableToRouteException(ReconcilerException):
         return {
             "values": [
                 fmt_value(
-                    value="Unable to Route Transaction",
-                    align="LEFT"
-                ),
-                fmt_value(
                     value=f"QB Row {self.qb.index}",
                 ),
                 fmt_value(
@@ -118,12 +142,23 @@ class UnableToRouteException(ReconcilerException):
                     align="LEFT"
                 ),
                 fmt_value(
+                    value="Unable to Route Transaction - This is unused?",
+                    align="LEFT"
+                ),
+                fmt_value(
                     value=f"{self.qb.raw.get('Amount', '???')}",
                     number_fmt=True,
                     align="RIGHT"
+                ),
+                fmt_value(
+                    value=f"{self.date}",
+                    align="LEFT"
                 )
             ]
         }
+
+    def sort_key(self) -> Any:
+        return 3, self.qb.index
 
 ################################################################################
 class NoRecordsToReconcileException(ReconcilerException):
@@ -133,6 +168,7 @@ class NoRecordsToReconcileException(ReconcilerException):
         self.sheet_name: str = sheet_name
         self.account_id: int = account_id
         self.qb_record: QBServiceRecord = qb_record
+        self.date: str = qb_record.date.strftime("%m-%d-%Y")
 
         super().__init__(
             f"NoRecordsToReconcileException in sheet '{sheet_name}': "
@@ -145,10 +181,6 @@ class NoRecordsToReconcileException(ReconcilerException):
         return {
             "values": [
                 fmt_value(
-                    value="No Records to Reconcile Against",
-                    align="LEFT"
-                ),
-                fmt_value(
                     value=f"QB Row {self.qb_record.index}",
                 ),
                 fmt_value(
@@ -156,12 +188,26 @@ class NoRecordsToReconcileException(ReconcilerException):
                     align="LEFT"
                 ),
                 fmt_value(
+                    value=(
+                        "No Positive Records - There are no existing positive "
+                        "balance records for the specified account ID. (On any sheet)"
+                    ),
+                    align="LEFT"
+                ),
+                fmt_value(
                     value=f"{self.qb_record.raw.get('Amount', '???')}",
                     number_fmt=True,
                     align="RIGHT"
+                ),
+                fmt_value(
+                    value=f"{self.date}",
+                    align="LEFT"
                 )
             ]
         }
+
+    def sort_key(self) -> Any:
+        return 4, self.sheet_name, self.qb_record.index
 
 ################################################################################
 class NoMatchingRecordException(ReconcilerException):
@@ -171,6 +217,7 @@ class NoMatchingRecordException(ReconcilerException):
         self.sheet_name: str = sheet_name
         self.account_id: int = account_id
         self.qb_record: QBServiceRecord = qb_record
+        self.date: str = qb_record.date.strftime("%m-%d-%Y")
 
         super().__init__(
             f"NoMatchingRecordException in sheet '{sheet_name}': "
@@ -183,10 +230,6 @@ class NoMatchingRecordException(ReconcilerException):
         return {
             "values": [
                 fmt_value(
-                    value="No Matching Record Found",
-                    align="LEFT"
-                ),
-                fmt_value(
                     value=f"QB Row {self.qb_record.index}",
                 ),
                 fmt_value(
@@ -194,12 +237,28 @@ class NoMatchingRecordException(ReconcilerException):
                     align="LEFT"
                 ),
                 fmt_value(
+                    value=(
+                        "No Matching Record Found - Existing records were found, "
+                        "but none of the existing records amounts' "
+                        "matched the QuickBooks transaction amount for this "
+                        "account ID."
+                    ),
+                    align="LEFT"
+                ),
+                fmt_value(
                     value=f"{self.qb_record.raw.get('Amount', '???')}",
                     number_fmt=True,
                     align="RIGHT"
+                ),
+                fmt_value(
+                    value=f"{self.date}",
+                    align="LEFT"
                 )
             ]
         }
+
+    def sort_key(self) -> Any:
+        return 5, self.sheet_name, self.qb_record.index
 
 ################################################################################
 class NumericParseError(ReconcilerException):
@@ -218,11 +277,15 @@ class NumericParseError(ReconcilerException):
         return {
             "values": [
                 fmt_value(
-                    value="Numeric Parse Error",
-                    align="LEFT"
-                ),
-                fmt_value(
                     value=f"Row {self.index} in {self.sheet_name}",
+                ),
+                blank_cell(),
+                fmt_value(
+                    value=(
+                        "Numeric Parse Error - Unable to parse a valid numeric "
+                        "value from the 'Amount' column."
+                    ),
+                    align="LEFT"
                 ),
                 fmt_value(
                     value=f"{self.value}",
@@ -230,6 +293,9 @@ class NumericParseError(ReconcilerException):
                 )
             ]
         }
+
+    def sort_key(self) -> Any:
+        return 6, self.sheet_name, self.index
 
 ################################################################################
 def fmt_value(value: str, number_fmt: bool = False, align: Literal["LEFT", "CENTER", "RIGHT"] = "CENTER") -> Dict[str, Any]:
@@ -248,6 +314,15 @@ def fmt_value(value: str, number_fmt: bool = False, align: Literal["LEFT", "CENT
             "stringValue": value
         },
         "userEnteredFormat": user_entered_format
+    }
+
+################################################################################
+def blank_cell() -> Dict[str, List[Dict[str, Any]]]:
+
+    return {
+        "values": [
+            fmt_value(value="")
+        ]
     }
 
 ################################################################################
