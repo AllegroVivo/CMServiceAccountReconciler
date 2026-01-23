@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Dict, List, Any, Literal
+from typing import TYPE_CHECKING, Dict, List, Any, Literal, Optional
 
 if TYPE_CHECKING:
     from .Classes import *
@@ -10,6 +10,9 @@ class ReconcilerException(Exception):
     def __init__(self, msg: str):
         self.msg = msg
         super().__init__(msg)
+
+    def __eq__(self, other: ReconcilerException) -> bool:
+        return self.msg == other.msg
 
     def to_row_data(self) -> Dict[str, List[Dict[str, Any]]]:
         raise NotImplementedError("Subclasses must implement to_row_data method.")
@@ -104,11 +107,15 @@ class QBParsingError(ReconcilerException):
                 ),
                 fmt_value(
                     value=f"{self.value.get('Amount', '???')}",
-                    number_fmt=True,
-                    align="RIGHT"
+                    number_fmt_str="$#,##0.00",
+                    number_fmt_type="CURRENCY",
+                    align="RIGHT",
+                    value_type="Number"
                 ),
                 fmt_value(
                     value=f"{self.date}",
+                    number_fmt_str="MM-DD-YYYY",
+                    number_fmt_type="DATE",
                     align="LEFT"
                 )
             ]
@@ -123,6 +130,7 @@ class UnableToRouteException(ReconcilerException):
     def __init__(self, qb: QBServiceRecord) -> None:
 
         self.qb: QBServiceRecord = qb
+        self.index: int = qb.index
         self.date: str = qb.date.strftime("%m-%d-%Y")
 
         super().__init__(
@@ -135,7 +143,7 @@ class UnableToRouteException(ReconcilerException):
         return {
             "values": [
                 fmt_value(
-                    value=f"QB Row {self.qb.index}",
+                    value=f"QB Row {self.index}",
                 ),
                 fmt_value(
                     value=f"{self.qb.raw.get('Name', '???')}",
@@ -147,12 +155,16 @@ class UnableToRouteException(ReconcilerException):
                 ),
                 fmt_value(
                     value=f"{self.qb.raw.get('Amount', '???')}",
-                    number_fmt=True,
-                    align="RIGHT"
+                    number_fmt_str="$#,##0.00",
+                    number_fmt_type="CURRENCY",
+                    align="RIGHT",
+                    value_type="Number"
                 ),
                 fmt_value(
                     value=f"{self.date}",
-                    align="LEFT"
+                    number_fmt_str="MM-DD-YYYY",
+                    number_fmt_type="DATE",
+                    align="LEFT",
                 )
             ]
         }
@@ -168,6 +180,7 @@ class NoRecordsToReconcileException(ReconcilerException):
         self.sheet_name: str = sheet_name
         self.account_id: int = account_id
         self.qb_record: QBServiceRecord = qb_record
+        self.index: int = qb_record.index
         self.date: str = qb_record.date.strftime("%m-%d-%Y")
 
         super().__init__(
@@ -181,7 +194,7 @@ class NoRecordsToReconcileException(ReconcilerException):
         return {
             "values": [
                 fmt_value(
-                    value=f"QB Row {self.qb_record.index}",
+                    value=f"QB Row {self.index}",
                 ),
                 fmt_value(
                     value=f"{self.qb_record.raw.get('Name', '???')}",
@@ -196,12 +209,16 @@ class NoRecordsToReconcileException(ReconcilerException):
                 ),
                 fmt_value(
                     value=f"{self.qb_record.raw.get('Amount', '???')}",
-                    number_fmt=True,
-                    align="RIGHT"
+                    number_fmt_str="$#,##0.00",
+                    number_fmt_type="CURRENCY",
+                    align="RIGHT",
+                    value_type="Number"
                 ),
                 fmt_value(
                     value=f"{self.date}",
-                    align="LEFT"
+                    number_fmt_str="MM-DD-YYYY",
+                    number_fmt_type="DATE",
+                    align="LEFT",
                 )
             ]
         }
@@ -217,6 +234,7 @@ class NoMatchingRecordException(ReconcilerException):
         self.sheet_name: str = sheet_name
         self.account_id: int = account_id
         self.qb_record: QBServiceRecord = qb_record
+        self.index: int = qb_record.index
         self.date: str = qb_record.date.strftime("%m-%d-%Y")
 
         super().__init__(
@@ -230,7 +248,7 @@ class NoMatchingRecordException(ReconcilerException):
         return {
             "values": [
                 fmt_value(
-                    value=f"QB Row {self.qb_record.index}",
+                    value=f"QB Row {self.index}",
                 ),
                 fmt_value(
                     value=f"{self.qb_record.raw.get('Name', '???')}",
@@ -247,12 +265,16 @@ class NoMatchingRecordException(ReconcilerException):
                 ),
                 fmt_value(
                     value=f"{self.qb_record.raw.get('Amount', '???')}",
-                    number_fmt=True,
-                    align="RIGHT"
+                    number_fmt_str="$#,##0.00",
+                    number_fmt_type="CURRENCY",
+                    align="RIGHT",
+                    value_type="Number"
                 ),
                 fmt_value(
                     value=f"{self.date}",
-                    align="LEFT"
+                    number_fmt_str="MM-DD-YYYY",
+                    number_fmt_type="DATE",
+                    align="LEFT",
                 )
             ]
         }
@@ -298,20 +320,26 @@ class NumericParseError(ReconcilerException):
         return 6, self.sheet_name, self.index
 
 ################################################################################
-def fmt_value(value: str, number_fmt: bool = False, align: Literal["LEFT", "CENTER", "RIGHT"] = "CENTER") -> Dict[str, Any]:
+def fmt_value(
+    value: str,
+    align: Literal["LEFT", "CENTER", "RIGHT"] = "CENTER",
+    number_fmt_str: Optional[str] = None,
+    number_fmt_type: Literal["CURRENCY", "DATE"] = "Currency",
+    value_type: Literal["String", "Formula", "Number"] = "String",
+) -> Dict[str, Any]:
 
     user_entered_format: Dict[str, Any] = {
         "horizontalAlignment": align,
     }
-    if number_fmt:
+    if number_fmt_str and number_fmt_type:
         user_entered_format["numberFormat"] = {
-            "type": "CURRENCY",
-            "pattern": "$#,##0.00",
+            "type": number_fmt_type,
+            "pattern": number_fmt_str,
         }
 
     return {
         "userEnteredValue": {
-            "stringValue": value
+            f"{value_type.lower()}Value": value
         },
         "userEnteredFormat": user_entered_format
     }

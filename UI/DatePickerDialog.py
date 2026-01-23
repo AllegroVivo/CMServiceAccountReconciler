@@ -57,7 +57,7 @@ class DatePickerDialog(QDialog):
 
 ################################################################################
     @staticmethod
-    def get_date(parent=None, *, initial: Optional[QDate] = None) -> date:
+    def get_date(parent=None, *, initial: Optional[QDate] = None) -> Optional[date]:
         """Static method to show the date picker dialog and return the result."""
         dialog = DatePickerDialog(parent, initial=initial)
         result = dialog.exec()

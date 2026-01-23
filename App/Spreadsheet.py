@@ -189,33 +189,10 @@ class Spreadsheet:
                     "includeSpreadsheetInResponse": False
                 },
             )
-            # Delete duplicates in the error sheet based on first column (QB Row)
-            self._client.batch_update_spreadsheet(
-                self.id,
-                body={
-                    "requests": [{
-                        "deleteDuplicates": {
-                            "range": {
-                                "sheetId": error_sheet_id,
-                                "startRowIndex": 0,
-                                "endRowIndex": len(reconciler._errors),
-                                "startColumnIndex": 0,
-                                "endColumnIndex": 10,
-                            },
-                            "comparisonColumns": [{
-                                "sheetId": error_sheet_id,
-                                "dimension": "COLUMNS",
-                                "startIndex": 0,
-                                "endIndex": 1,
-                            }]
-                        }
-                    }]
-                }
-            )
 
         # Add data to the summary sheet for totals
         summary_sheet_id = new_sheet_ids[f"Summary - {date_str}"]
-        summary_requests = self._summary_sheet_requests(summary_sheet_id, date_str)
+        summary_requests = self._summary_sheet_requests(summary_sheet_id, date_str, len(reconciler._errors) or None)
         print(f"Appending data to sheet 'Summary'...")
         self._client.batch_update_spreadsheet(
             self.id,
@@ -244,7 +221,7 @@ class Spreadsheet:
 
 ################################################################################
     @staticmethod
-    def _summary_sheet_requests(sheet_id: int, date_str: str) -> Tuple[Dict[str, Any], ...]:
+    def _summary_sheet_requests(sheet_id: int, date_str: str, error_total_row: int = None) -> Tuple[Dict[str, Any], ...]:
 
         def _cell_str(text: str) -> Dict[str, Any]:
             return {"userEnteredValue": {"stringValue": text}}
@@ -273,18 +250,34 @@ class Spreadsheet:
             (f"Duct Cleaning", _sum(f"Duct Cleaning - {date_str}", "C:C")),
             ("Opening Balances", _sum("Opening Balances", "B:B")),
             ("Total", _sum(f"Summary - {date_str}", "B1:B6")),
-            ("", None),
-            ("", None),
         ]
+        if error_total_row is not None:
+            rows_spec.append(("Parsing Errors", f"={U.absolute_range(f'Parsing Errors - {date_str}', f'D{error_total_row + 1}')}"))
+        else:
+            rows_spec.append(("Parsing Errors", "$0.00"))
+
+        rows_spec.append(("QuickBooks Balance", None))
+        rows_spec.append(("TOTAL DIFFERENCE", "=SUM(B9 - SUM(B7+B8))"))
+        rows_spec.append(("", None))
 
         append_cells_request = {
             "appendCells": {
                 "sheetId": sheet_id,
-                "fields": "userEnteredValue",
+                "fields": "*",
                 "rows": [_row(label, formula) for (label, formula) in rows_spec],
             }
         }
         append_cells_request["appendCells"]["rows"].append(_row("Reconciled Thru", date_str, force_str=True))
+        if error_total_row is not None:
+            append_cells_request["appendCells"]["rows"][-5]["values"][1]["userEnteredFormat"] = {
+                "backgroundColorStyle": {
+                    "rgbColor": {
+                        "red": 0.85,
+                        "green": 0.30,
+                        "blue": 0.30,
+                    }
+                }
+            }
 
         format_cells_request = {
             "repeatCell": {

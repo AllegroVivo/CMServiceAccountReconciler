@@ -38,6 +38,7 @@ class ReconciliationController(QObject):
         self._win.stop_requested.connect(self.stop_run)
         self._win.rules_requested.connect(self.open_rules)
         self._win.date_change_requested.connect(self.change_date)
+        self._win.spreadsheet_id_changed.connect(self.change_spreadsheet_id)
 
 ################################################################################
     @Slot()
@@ -61,20 +62,6 @@ class ReconciliationController(QObject):
         self._win.set_running(True)
 
         self._thread = QThread()
-
-        if self._app_state.spreadsheet_id != spreadsheet_id:
-            resp = QMessageBox.question(
-                self._win,
-                "Spreadsheet ID Changed",
-                "The Spreadsheet ID has changed. Do you want to update it?",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
-            )
-            if resp == QMessageBox.StandardButton.Yes:
-                self._app_state.update_spreadsheet_id(spreadsheet_id)
-                self._win.set_spreadsheet_id(spreadsheet_id)
-                self._win.append_log("[Controller] Updated stored Spreadsheet ID.")
-            else:
-                self._win.append_log("[Controller] Spreadsheet ID not updated per user choice. Reverting...")
 
         if self._app_state.last_run_date is not None:
             if self._app_state.last_run_date >= run_date:
@@ -227,5 +214,16 @@ class ReconciliationController(QObject):
 
         self._app_state.update_last_run_date(new_date)
         self._win.append_log(f"[Controller] Updated last run date to {new_date.strftime('%m-%d-%Y')}.")
+
+################################################################################
+    @Slot(str)
+    def change_spreadsheet_id(self, new_id: str) -> None:
+
+        if self._thread is not None:
+            self._win.append_log("[Controller] Cannot change Spreadsheet ID while a run is in progress!")
+            return
+
+        self._app_state.update_spreadsheet_id(new_id)
+        self._win.append_log(f"[Controller] Updated stored Spreadsheet ID to {new_id}.")
 
 ################################################################################

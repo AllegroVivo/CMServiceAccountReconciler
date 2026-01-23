@@ -17,7 +17,7 @@ class LogPanel(QPlainTextEdit):
         super().__init__(parent)
 
         self.setReadOnly(True)
-        self.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
+        self.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
         self.document().setMaximumBlockCount(5000)
 
 ################################################################################

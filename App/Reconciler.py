@@ -251,17 +251,55 @@ class ServiceReconciler:
             self._errors.extend(sheet._errors)
             sheet._errors.clear()
 
-        print(len(self._errors), "errors found during reconciliation. Writing...")
+        self._deduplicate_errors()
+        print(len(self._errors), "unique errors found during reconciliation. Writing...")
 
         if sheet_id:
-            return {
+            request = {
                 "appendCells": {
                     "sheetId": sheet_id,
                     "fields": "*",
                     "rows": [e.to_row_data() for e in sorted(self._errors, key=lambda e: e.sort_key())]
                 }
             }
+            request["appendCells"]["rows"].append({
+                "values": [
+                    blank_cell(),
+                    blank_cell(),
+                    fmt_value(
+                        value="TOTAL:",
+                        align="RIGHT"
+                    ),
+                    fmt_value(
+                        value=f"=SUM(D1:D{len(self._errors)})",
+                        align="RIGHT",
+                        value_type="Formula",
+                        number_fmt_str="$#,##0.00",
+                        number_fmt_type="CURRENCY"
+                    )
+                ]
+            })
+            return request
         return {}
+
+################################################################################
+    def _deduplicate_errors(self) -> None:
+
+        unique_errors: List[ReconcilerException] = []
+        for error in self._errors:
+            if hasattr(error, "index"):
+                qb_row_str = f"QB Row {error.index}"
+                for ue in unique_errors:
+                    if hasattr(ue, "index"):
+                        existing_qb_row_str = f"QB Row {ue.index}"
+                        if qb_row_str == existing_qb_row_str:
+                            break
+                else:
+                    unique_errors.append(error)
+            else:
+                unique_errors.append(error)
+
+        self._errors = list(unique_errors)
 
 ################################################################################
     def format_error_for_export(self, error: ReconcilerException) -> List[str]:
@@ -322,5 +360,35 @@ class ServiceReconciler:
 
         values = [v for v in row.values() if v.strip() != '']
         return len(values) < 4
+
+################################################################################
+def fmt_value(
+    value: str,
+    align: Literal["LEFT", "CENTER", "RIGHT"] = "CENTER",
+    number_fmt_str: Optional[str] = None,
+    number_fmt_type: Literal["CURRENCY", "DATE"] = "Currency",
+    value_type: Literal["String", "Formula"] = "String",
+) -> Dict[str, Any]:
+
+    user_entered_format: Dict[str, Any] = {
+        "horizontalAlignment": align,
+    }
+    if number_fmt_str and number_fmt_type:
+        user_entered_format["numberFormat"] = {
+            "type": number_fmt_type,
+            "pattern": number_fmt_str,
+        }
+
+    return {
+        "userEnteredValue": {
+            f"{value_type.lower()}Value": value
+        },
+        "userEnteredFormat": user_entered_format
+    }
+
+################################################################################
+def blank_cell() -> Dict[str, List[Dict[str, Any]]]:
+
+    return fmt_value("")
 
 ################################################################################
