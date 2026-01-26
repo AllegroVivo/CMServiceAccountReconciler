@@ -229,14 +229,26 @@ class Spreadsheet:
         def _cell_formula(formula: str) -> Dict[str, Any]:
             return {"userEnteredValue": {"formulaValue": formula}}
 
-        def _row(label: Optional[str] = None, formula: Optional[str] = None, force_str: bool = False) -> Dict[str, Any]:
+        def _cell_number(number: float) -> Dict[str, Any]:
+            return {"userEnteredValue": {"numberValue": number}}
+
+        def _row(
+            label: Optional[str] = None,
+            formula: Optional[str] = None,
+            force_type: Literal["String", "Formula", "Number"] = None
+        ) -> Dict[str, Any]:
             values = []
             if label is not None:
                 values.append(_cell_str(label))
-            if formula is not None and not force_str:
+            if formula is not None and not force_type:
                 values.append(_cell_formula(formula))
-            if force_str:
-                values.append(_cell_str(formula if formula is not None else ""))
+            if force_type is not None:
+                if force_type == "String":
+                    values.append(_cell_str(formula if formula is not None else ""))
+                elif force_type == "Formula":
+                    values.append(_cell_formula(formula if formula is not None else ""))
+                elif force_type == "Number":
+                    values.append(_cell_number(formula if formula is not None else 0.0))
             return {"values": values}
 
         def _sum(sheet: str, a1_range: str) -> str:
@@ -250,15 +262,10 @@ class Spreadsheet:
             (f"Duct Cleaning", _sum(f"Duct Cleaning - {date_str}", "C:C")),
             ("Opening Balances", _sum("Opening Balances", "B:B")),
             ("Total", _sum(f"Summary - {date_str}", "B1:B6")),
+            ("QuickBooks Balance", None),
+            ("TOTAL DIFFERENCE", "=SUM(B9-B7)"),
+            ("", None)
         ]
-        if error_total_row is not None:
-            rows_spec.append(("Parsing Errors", f"={U.absolute_range(f'Parsing Errors - {date_str}', f'D{error_total_row + 1}')}"))
-        else:
-            rows_spec.append(("Parsing Errors", "$0.00"))
-
-        rows_spec.append(("QuickBooks Balance", None))
-        rows_spec.append(("TOTAL DIFFERENCE", "=SUM(B9 - SUM(B7+B8))"))
-        rows_spec.append(("", None))
 
         append_cells_request = {
             "appendCells": {
@@ -267,8 +274,16 @@ class Spreadsheet:
                 "rows": [_row(label, formula) for (label, formula) in rows_spec],
             }
         }
-        append_cells_request["appendCells"]["rows"].append(_row("Reconciled Thru", date_str, force_str=True))
+        append_cells_request["appendCells"]["rows"].append(_row("Reconciled Thru", date_str, force_type="String"))
         if error_total_row is not None:
+            append_cells_request["appendCells"]["rows"].insert(
+                7,
+                _row(
+                    "Parsing Errors",
+                    f"={U.absolute_range(f'Parsing Errors - {date_str}', 
+                                         f'D{error_total_row + 1}')}", force_type="Formula"
+                )
+            )
             append_cells_request["appendCells"]["rows"][-5]["values"][1]["userEnteredFormat"] = {
                 "backgroundColorStyle": {
                     "rgbColor": {
@@ -278,13 +293,15 @@ class Spreadsheet:
                     }
                 }
             }
+        else:
+            append_cells_request["appendCells"]["rows"].insert(7, _row("Parsing Errors", "0.00", force_type="Number"))
 
         format_cells_request = {
             "repeatCell": {
                 "range": {
                     "sheetId": sheet_id,
                     "startRowIndex": 0,
-                    "endRowIndex": len(rows_spec) - 4,
+                    "endRowIndex": len(append_cells_request["appendCells"]["rows"]) - 2,
                     "startColumnIndex": 1,
                     "endColumnIndex": 2,
                 },
@@ -293,7 +310,8 @@ class Spreadsheet:
                         "numberFormat": {
                             "type": "CURRENCY",
                             "pattern": "$#,##0.00",
-                        }
+                        },
+                        "horizontalAlignment": "RIGHT",
                     }
                 },
                 "fields": "userEnteredFormat.numberFormat",
@@ -314,7 +332,8 @@ class Spreadsheet:
                         "numberFormat": {
                             "type": "DATE",
                             "pattern": "MM/DD/YYYY",
-                        }
+                        },
+                        "horizontalAlignment": "RIGHT",
                     }
                 },
                 "fields": "userEnteredFormat.numberFormat",
