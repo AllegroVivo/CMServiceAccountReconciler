@@ -1,4 +1,6 @@
-# Setup & Configuration
+# Advanced Setup & Configuration
+
+# This section is incomplete and will have further updates soon.
 
 ## Introduction
 

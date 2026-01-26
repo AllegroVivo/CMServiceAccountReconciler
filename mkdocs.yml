@@ -53,4 +53,7 @@ copyright: Copyright © 2026 Frogge Tech Solutions
 
 nav:
   - Home: index.md
-  - Setup & Configuration: setup.md
+  - Usage Guide: usage.md
+  - Admin Functions: admin-funcs.md
+  - Error Descriptions: errors.md
+  - Advanced Setup: setup.md

@@ -28,7 +28,7 @@ All of these files should be kept together in the same directory for the applica
 
 ## Dependencies
 
-The CM Heading Service Account Reconciler relies on the following libraries and frameworks:
+The CM Heating Service Account Reconciler relies on the following libraries and frameworks:
 - `PySide6` - For creating the graphical user interface (GUI).
 - `google-auth` - For handling Google API authentication.
 - `SQLAlchemy` - For database management and operations.
