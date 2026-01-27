@@ -172,13 +172,10 @@ class Spreadsheet:
         # Call this outside the loop to ensure we've collected all errors from all sheets first.
         reconciler.format_all_errors(None)
         if len(reconciler._errors) > 0:
-            error_sheet_payload = {
-                "requests": [self.create_error_sheet_request(date_str)]
-            }
             print(f"Creating sheet 'Parsing Errors'...")
             resp = self._client.batch_update_spreadsheet(
                 self.id,
-                error_sheet_payload
+                {"requests": [self.create_error_sheet_request(date_str)]}
             )
             error_sheet_id = resp["replies"][0]["addSheet"]["properties"]["sheetId"]
             print(f"Appending data to sheet 'Parsing Errors'...")
